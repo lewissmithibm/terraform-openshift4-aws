@@ -188,12 +188,14 @@ terraform destroy -target=module.bootstrap.aws_instance.bootstrap
 
 For performing a completely airgapped cluster, there are two capabilities that would not be available from the cluster's automation capabilities, the IAM and Route53 management access. The airgapped solution can address this by pre-creating the roles and secret that are needed for OpenShift to complete its functions, but the DNS update on Route53 must be performed manually after the installation.
 
+**Note** This installation uses OpenShift Version 4.3.18.
+
 Setting up the mirror repository using AWS ECR:
 
 1. Create the repository
 
     ```
-    aws ecr create-repository --repository-name ocp435
+    aws ecr create-repository --repository-name ocp4318
     ```
 
 2. Prepare your credential to access the ECR repository (ie the credential only valid for 12 hrs)
@@ -205,21 +207,21 @@ Setting up the mirror repository using AWS ECR:
     Extract the password token (`-p` argument) and create a Base64 string:
 
     ```
-    echo "AWS:<token>" | base64 -w0
+    echo -n "AWS:<token>" | base64 -w0
     ```
 
-    Put that into your pull secret:
+    Add that into your existing OpenShift pull pull secret:
 
     ```
-    {"353456611220.dkr.ecr.us-east-1.amazonaws.com":{"auth":"<base64string>","email":"abc@example.com"}}
+    {"<ecr_uri>":{"auth":"<base64string>","email":"abc@example.com"}}
     ```
 
 3. Mirror quay.io and other OpenShift source into your repository
 
     ```
-    export OCP_RELEASE="4.3.5-x86_64"
-    export LOCAL_REGISTRY='1234567812345678.dkr.ecr.us-east-1.amazonaws.com'
-    export LOCAL_REPOSITORY='ocp435'
+    export OCP_RELEASE="4.3.18-x86_64"
+    export LOCAL_REGISTRY='<ecr_uri>'
+    export LOCAL_REPOSITORY='ocp4318'
     export PRODUCT_REPO='openshift-release-dev'
     export LOCAL_SECRET_JSON='/home/ec2-user/openshift_pull_secret.json'
     export RELEASE_NAME="ocp-release"
@@ -232,19 +234,22 @@ Setting up the mirror repository using AWS ECR:
 
 Once the mirror registry is created - use the terraform.tfvars similar to below:
 
+To get the AMI for your region see page 137 of: https://access.redhat.com/documentation/en-us/openshift_container_platform/4.3/pdf/installing_on_aws/OpenShift_Container_Platform-4.3-Installing_on_AWS-en-US.pdf 
+
 ```
 cluster_id = "ocp4-9n2nn"
 clustername = "ocp4"
 base_domain = "example.com"
 openshift_pull_secret = "./openshift_pull_secret.json"
-openshift_installer_url = "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/latest"
+openshift_installer_url = "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.18/"
 
 aws_access_key_id = "AAAA"
 aws_secret_access_key = "AbcDefGhiJkl"
-aws_ami = "ami-06f85a7940faa3217"
+aws_ami = "<ami_for_your_region>"
 aws_extra_tags = {
   "kubernetes.io/cluster/ocp4-9n2nn" = "owned",
   "owner" = "admin"
+  "projec" = "project name"
   }
 aws_azs = [
   "us-east-1a",
@@ -255,13 +260,190 @@ aws_region = "us-east-1"
 aws_publish_strategy = "Internal"
 airgapped = {
   enabled = true
-  repository = "1234567812345678.dkr.ecr.us-east-1.amazonaws.com/ocp435"
+  repository = "<ecr_uri>/ocp4318"
 }
 ```
 
-**Note**: To use `airgapped.enabled` of `true` must be done with `aws_publish_strategy` of `Internal` otherwise the deployment will fail.
+4. Deploying the cluster
 
-Create your cluster and then associate the private Hosted Zone Record in Route53 with the loadbalancer for the `*.apps.<cluster>.<domain>`.  
+Initialize the Terraform:
+
+```bash
+terraform init
+```
+
+Run the terraform provisioning:
+
+```bash
+terraform plan
+terraform apply
+```
+
+Once the terraform has been run, get the `private_key_pem` from the `terraform.tfstate` file. This is what we will use in our jump server to connect to the bootstrap node.
+
+``
+cat terraform.tfstate
+``
+
+This will likely be at the bottom of the state file.
+
+To convert this to a usable key file run, from your local machine
+
+``
+vi key.pem
+``
+
+Paste in the contents of private_key_pem
+
+Run vi command `:%s/\\n/\r/g` to format the file.
+
+Save and run `chmod 0600 key.pem` to correct the file permissions.
+
+We also need to get the contents of `kubeconfig` but this uses file permission `chmod kubeconfig 640`
+
+5. We need connect to your cluster in order to create a load balancer, in order to do this we need a jump server within the private VPC that has public ssh access
+
+Within the AWS console, go to the VPC service
+
+Create a new Internet Gateway, then attach it to your private VPC
+
+Go to your VPC, click your route table and click edit routes
+
+```
+Destination
+0.0.0.0/0
+
+Target
+The internet gate way we created in the last step
+```
+
+Save
+
+Navigate back to EC2 instances console, launch a new instance
+
+In the configure instance tab, make sure to choose your private VPC and create a *new* subnet. Set Auto-assign public Ip to enable.
+
+Launch and then connect to your EC2 instance
+
+Move your `key.pem` file from your local machine to the EC2 instance
+
+Ssh to your bootstrap node
+
+``
+ssh -i key.pem core@<bootstrap_node_ip>
+``
+
+Copy your `kubeconfig` file to the bootstrap node, then export it
+
+``
+export KUBECONFIG=kubeconfig
+``
+
+You should now be able to run
+
+``
+oc get co
+``
+
+Update the `router-internal-default` service type from `ClusterIp` to `NodePort`
+
+``
+oc edit svc router-internal-default -n openshift-ingress
+`` 
+
+Run
+
+``
+oc get svc -n openshift-ingress
+``
+
+Take note of the ports assigned to port 80 and port 443.
+
+5. Create a classic load balancer
+
+Make sure you pick a classic load balancer, provide a name and choose the VPC that was generated by the terraform script
+
+Edit the existing listener to use the instance port matching the one you recorded for port 80 in the last step.
+
+Add a new record with the Load Balancer Protocol of `TCP` with port 443 and then instance port matching that of port 443 in the last step.
+
+Select all the subnets, excluding your manually created subnet. As this has public access and will be later deleted.
+
+On Assign Security Groups, select create new
+
+On Health Check set
+
+``
+Ping Protocol
+TCP
+
+Ping Port
+Use the recorded port for TCP for port 80 in the previous step
+
+Ping Path
+/
+``
+
+On Add EC2 Instance page, select all the workers
+
+Then create
+
+Navigate to Route53 and then click on the private hosted zone that mates your cluster, it will take the form below
+
+``<cluster_name>.<domain_name>.``
+
+Create a new record set
+
+``
+Name
+*.apps
+
+Type
+A - IPV4 Address
+
+Alias - yes
+Select the load balancer we just created
+``
+
+Save
+
+6. Update worker security group
+
+Navigate to your EC2 Instances, click on a worker then the security group.
+
+Edit inbound rules
+
+Add rule
+
+``
+Type
+Custom TCP
+
+Protocol
+TCP
+
+Port Range
+30000 - 32767
+
+Source
+0.0.0.0/0
+``
+*The source in a production environment should not be the world. This is set to open just for demonstrative purposes*
+
+Save.
+
+7. Final check
+
+After 5 - 10 minutes, running:
+
+``
+oc get co
+``
+
+Should show all to be available.
+
+**Note**
+You should now remove your public subnet and jump server, this will return the cluster to an airgapped state.  
 
 ## Removal Procedure
 

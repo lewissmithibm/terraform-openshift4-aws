@@ -341,13 +341,19 @@ Setting up the mirror repository using AWS ECR:
     vi key.pem
     ```
 
-    Paste in the contents of private_key_pem
+    Paste in the contents of `private_key_pem`
     
-    Run vi command `:%s/\\n/\r/g` to format the file.
+    Run this command in vi to format the file
     
-    Save and run `chmod 0600 key.pem` to correct the file permissions.
+    ```
+    :%s/\\n/\r/g
+    ```
     
-    We also need to get the contents of `kubeconfig` but this uses file permission `chmod kubeconfig 640`
+    Once saved, update the permissions on the `key.pem` file, so we can SSh with it.
+    
+    ```
+    chmod 0600 key.pem
+    ```
 
 5. We need connect to your cluster in order to create a load balancer, in order to do this we need a jump server within the private VPC that has public ssh access
 

@@ -333,17 +333,7 @@ Setting up the mirror repository using AWS ECR:
     cat terraform.tfstate
     ```
 
-    This will likely be at the bottom of the state file.
-    
-    To convert this to a usable key file run, from your local machine
-    
-    ```
-    vi key.pem
-    ```
-
-    Paste in the contents of `private_key_pem`
-    
-    Run this command in vi to format the file
+    This will likely be at the bottom of the state file, copy this into a new file with the extension `.pem`. Within vi, use the following command to format the key into a usable state.
     
     ```
     :%s/\\n/\r/g

@@ -280,37 +280,37 @@ Setting up the mirror repository using AWS ECR:
        --to-release-image=${LOCAL_REGISTRY}/${LOCAL_REPOSITORY}:${OCP_RELEASE}
     ```
 
-Once the mirror registry is created - use the terraform.tfvars similar to below:
-
-To get the AMI for your region see page 137 of: https://access.redhat.com/documentation/en-us/openshift_container_platform/4.3/pdf/installing_on_aws/OpenShift_Container_Platform-4.3-Installing_on_AWS-en-US.pdf 
-
-```
-cluster_id = "ocp4-9n2nn"
-clustername = "ocp4"
-base_domain = "example.com"
-openshift_pull_secret = "./openshift_pull_secret.json"
-openshift_installer_url = "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.18/"
-
-aws_access_key_id = "AAAA"
-aws_secret_access_key = "AbcDefGhiJkl"
-aws_ami = "<ami_for_your_region>"
-aws_extra_tags = {
-  "kubernetes.io/cluster/ocp4-9n2nn" = "owned",
-  "owner" = "admin"
-  "projec" = "project name"
-  }
-aws_azs = [
-  "us-east-1a",
-  "us-east-1b",
-  "us-east-1c"
-  ]
-aws_region = "us-east-1"
-aws_publish_strategy = "Internal"
-airgapped = {
-  enabled = true
-  repository = "<ecr_uri>/ocp4318"
-}
-```
+    Once the mirror registry is created - use the terraform.tfvars similar to below:
+    
+    To get the AMI for your region see page 137 of: https://access.redhat.com/documentation/en-us/openshift_container_platform/4.3/pdf/installing_on_aws/OpenShift_Container_Platform-4.3-Installing_on_AWS-en-US.pdf 
+    
+    ```
+    cluster_id = "ocp4-9n2nn"
+    clustername = "ocp4"
+    base_domain = "example.com"
+    openshift_pull_secret = "./openshift_pull_secret.json"
+    openshift_installer_url = "https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.18/"
+    
+    aws_access_key_id = "AAAA"
+    aws_secret_access_key = "AbcDefGhiJkl"
+    aws_ami = "<ami_for_your_region>"
+    aws_extra_tags = {
+      "kubernetes.io/cluster/ocp4-9n2nn" = "owned",
+      "owner" = "admin"
+      "projec" = "project name"
+      }
+    aws_azs = [
+      "us-east-1a",
+      "us-east-1b",
+      "us-east-1c"
+      ]
+    aws_region = "us-east-1"
+    aws_publish_strategy = "Internal"
+    airgapped = {
+      enabled = true
+      repository = "<ecr_uri>/ocp4318"
+    }
+    ```
 
 4. Deploying the cluster
 
@@ -327,27 +327,27 @@ airgapped = {
     terraform apply
     ```
 
-Once the terraform has been run, get the `private_key_pem` from the `terraform.tfstate` file. This is what we will use in our jump server to connect to the bootstrap node.
+    Once the terraform has been run, get the `private_key_pem` from the `terraform.tfstate` file. This is what we will use in our jump server to connect to the bootstrap node.
+    
+    ```
+    cat terraform.tfstate
+    ```
 
-``
-cat terraform.tfstate
-``
+    This will likely be at the bottom of the state file.
+    
+    To convert this to a usable key file run, from your local machine
+    
+    ```
+    vi key.pem
+    ```
 
-This will likely be at the bottom of the state file.
-
-To convert this to a usable key file run, from your local machine
-
-``
-vi key.pem
-``
-
-Paste in the contents of private_key_pem
-
-Run vi command `:%s/\\n/\r/g` to format the file.
-
-Save and run `chmod 0600 key.pem` to correct the file permissions.
-
-We also need to get the contents of `kubeconfig` but this uses file permission `chmod kubeconfig 640`
+    Paste in the contents of private_key_pem
+    
+    Run vi command `:%s/\\n/\r/g` to format the file.
+    
+    Save and run `chmod 0600 key.pem` to correct the file permissions.
+    
+    We also need to get the contents of `kubeconfig` but this uses file permission `chmod kubeconfig 640`
 
 5. We need connect to your cluster in order to create a load balancer, in order to do this we need a jump server within the private VPC that has public ssh access
 

@@ -347,61 +347,57 @@ Setting up the mirror repository using AWS ECR:
 
 5. We need connect to your cluster in order to create a load balancer, in order to do this we need a jump server within the private VPC that has public ssh access
 
-Within the AWS console, go to the VPC service
+    From the VPC home page, create a new Internet Gateway, then attach it to your private VPC.
 
-Create a new Internet Gateway, then attach it to your private VPC
+    Go to your VPC, click your route table and add a new route
 
-Go to your VPC, click your route table and click edit routes
+    ```
+    Destination
+    0.0.0.0/0
+    
+    Target
+    The internet gate way we created in the last step
+    ```
 
-```
-Destination
-0.0.0.0/0
+    Back in EC2, launch a new instance
 
-Target
-The internet gate way we created in the last step
-```
+    On the *Configure Instance* tab, make sure to choose your private VPC and create a *new* subnet. Set Auto-assign public Ip to enable
+    
+    Launch and connect to your new EC2 instance
 
-Save
+    Move your `key.pem` file from your local machine to the EC2 instance
 
-Navigate back to EC2 instances console, launch a new instance
+    Ssh to your bootstrap node, but make sure to use the user `core` instead of `ec2-user`
+    
+    ```
+    ssh -i key.pem core@<bootstrap_node_ip>
+    ```
 
-In the configure instance tab, make sure to choose your private VPC and create a *new* subnet. Set Auto-assign public Ip to enable.
+    Copy your `kubeconfig` file to the bootstrap node, then export it. This can be found within the repository where you initially ran the terraform script
 
-Launch and then connect to your EC2 instance
+    ```
+    export KUBECONFIG=kubeconfig
+    ```
 
-Move your `key.pem` file from your local machine to the EC2 instance
+    Now we're able to check on our cluster operators
 
-Ssh to your bootstrap node
+    ```
+    oc get co
+    ```
 
-``
-ssh -i key.pem core@<bootstrap_node_ip>
-``
+    Update the `router-internal-default` service type from `ClusterIp` to `NodePort`
 
-Copy your `kubeconfig` file to the bootstrap node, then export it
+    ```
+    oc edit svc router-internal-default -n openshift-ingress
+    ```
 
-``
-export KUBECONFIG=kubeconfig
-``
+    Now we can get our port assignments
 
-You should now be able to run
+    ```
+    oc get svc -n openshift-ingress
+    ```
 
-``
-oc get co
-``
-
-Update the `router-internal-default` service type from `ClusterIp` to `NodePort`
-
-``
-oc edit svc router-internal-default -n openshift-ingress
-`` 
-
-Run
-
-``
-oc get svc -n openshift-ingress
-``
-
-Take note of the ports assigned to port 80 and port 443.
+    Take note of the ports assigned to port 80 and port 443.
 
 5. Create a classic load balancer
 

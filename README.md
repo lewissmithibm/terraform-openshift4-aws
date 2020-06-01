@@ -15,6 +15,11 @@ This project uses mainly Terraform as infrastructure management and installation
 
 ### Prerequisites
 
+The best way to run this terraform install is to run it from an EC2 instance. You could also run it from your local machine, to do this use the manual setup steps. If you choose to use an EC2 instance, you can use the automated setup detailed below.
+
+There are also a couple of steps detailed after that you must run regardless of your install type.
+
+####Manual Install
 1. To use Terraform automation, download the Terraform binaries [here](https://www.terraform.io/). The code here supports Terraform 0.12 - 0.12.13; there are warning messages to run this on 0.12.14 and later.
 
    On MacOS, you can acquire it using [homebrew](brew.sh) using this command:
@@ -26,7 +31,7 @@ This project uses mainly Terraform as infrastructure management and installation
 2. Install git
 
    ```bash
-   sudo yum intall git-all
+   sudo yum install git-all
    git --version
    ```
 
@@ -54,17 +59,60 @@ This project uses mainly Terraform as infrastructure management and installation
       zypper install wget
       ```
 
-4. Get the Terraform code
+5. Get the Terraform code
 
    ```bash
    git clone https://github.com/ibm-cloud-architecture/terraform-openshift4-aws.git
    ```
+   
+6. Install the AWS CLI using ```https://aws.amazon.com/cli/```
+   
+####Automated EC2 Setup
 
-5. Prepare the DNS
+1. Create an EC2 instance using the AMI with the AWS CLI installed, usually second on the list.
+
+2. Choose the `t2.micro` instance type, which can be used here as we don't need anything more than this provides, if you are still within the first year of the account it will also be covered by the free tier.
+    
+3. On the Configure Instance page, paste the following into the User Data field at the bottom of the form. This will install all of the required components to run the install including cloning this repository into the home folder.
+    
+   ```
+   #!/bin/bash
+   sudo yum update
+   sudo yum install git-all -y
+   wget https://mirror.openshift.com/pub/openshift-v4/clients/ocp/4.3.18/openshift-client-linux-4.3.18.tar.gz
+   tar -xvf openshift-client-linux-4.3.18.tar.gz
+   chmod u+x oc kubectl
+   sudo mv oc /usr/local/bin
+   sudo mv kubectl /usr/local/bin
+   sudo rm openshift-client-linux-4.3.18.tar.gz
+   git clone https://github.com/ibm-cloud-architecture/terraform-openshift4-aws.git
+   sudo mv terraform-openshift4-aws home/ec2-user/
+   cd home/ec2-user
+   chown -R ec2-user terraform-openshift4-aws
+   cd /usr/local/src
+   wget https://releases.hashicorp.com/terraform/0.12.25/terraform_0.12.25_linux_386.zip
+   unzip terraform_0.12.25_linux_386.zip
+   mv terraform /usr/local/bin/
+   cd /home/ec2-user/terraform-openshift4-aws/
+   terraform init
+   ```
+   
+   **Note:** You can change the OpenShift Client version to match your requirements.
+
+4. Add the tags to match your project
+
+5. Create a new security group with just port 22 for SSH enabled
+
+6. Launch instance
+
+    When the status checks are complete you will be able to ssh to your instance and see this repo in your home folder ready to go.
+    
+####Required for both installs
+1. Prepare the DNS
 
    OpenShift requires a valid DNS domain, you can get one from AWS Route53 or using existing domain and registrar. The DNS must be registered as a Public Hosted Zone in Route53. (Even if you plan to use an airgapped environment)
-
-6. Prepare AWS Account Access
+    
+2. Prepare AWS Account Access
 
    Please reference the [Required AWS Infrastructure components](https://docs.openshift.com/container-platform/4.1/installing/installing_aws_user_infra/installing-aws-user-infra.html#installation-aws-user-infra-requirements_installing-aws-user-infra) to setup your AWS account before installing OpenShift 4.
 

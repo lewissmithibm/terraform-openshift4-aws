@@ -209,12 +209,6 @@ See [Terraform documentation](https://www.terraform.io/intro/getting-started/var
 
 ### Deploying the cluster
 
-Initialize the Terraform:
-
-```bash
-terraform init
-```
-
 Run the terraform provisioning:
 
 ```bash
@@ -313,12 +307,6 @@ Setting up the mirror repository using AWS ECR:
     ```
 
 4. Deploying the cluster
-
-    Initialize the Terraform:
-    
-    ```bash
-    terraform init
-    ```
 
     Run the terraform provisioning:
     

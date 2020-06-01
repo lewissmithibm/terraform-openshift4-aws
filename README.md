@@ -107,7 +107,7 @@ There are also a couple of steps detailed after that you must run regardless of 
 
     When the status checks are complete you will be able to ssh to your instance and see this repo in your home folder ready to go.
     
-####Required for both installs
+#### Required for both installs
 1. Prepare the DNS
 
    OpenShift requires a valid DNS domain, you can get one from AWS Route53 or using existing domain and registrar. The DNS must be registered as a Public Hosted Zone in Route53. (Even if you plan to use an airgapped environment)
@@ -116,7 +116,7 @@ There are also a couple of steps detailed after that you must run regardless of 
 
    Please reference the [Required AWS Infrastructure components](https://docs.openshift.com/container-platform/4.1/installing/installing_aws_user_infra/installing-aws-user-infra.html#installation-aws-user-infra-requirements_installing-aws-user-infra) to setup your AWS account before installing OpenShift 4.
 
-   We suggest to create an AWS IAM user dedicated for OpenShift installation with permissions documented above.
+   We suggest creating an AWS IAM user dedicated for OpenShift installation with permissions documented above.
    On the bastion host, configure your AWS user credential as environment variables:
 
     ```bash
@@ -314,18 +314,18 @@ airgapped = {
 
 4. Deploying the cluster
 
-Initialize the Terraform:
+    Initialize the Terraform:
+    
+    ```bash
+    terraform init
+    ```
 
-```bash
-terraform init
-```
-
-Run the terraform provisioning:
-
-```bash
-terraform plan
-terraform apply
-```
+    Run the terraform provisioning:
+    
+    ```bash
+    terraform plan
+    terraform apply
+    ```
 
 Once the terraform has been run, get the `private_key_pem` from the `terraform.tfstate` file. This is what we will use in our jump server to connect to the bootstrap node.
 

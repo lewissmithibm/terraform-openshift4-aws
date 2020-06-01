@@ -19,7 +19,7 @@ The best way to run this terraform install is to run it from an EC2 instance. Yo
 
 There are also a couple of steps detailed after that you must run regardless of your install type.
 
-####Manual Install
+#### Manual Install
 1. To use Terraform automation, download the Terraform binaries [here](https://www.terraform.io/). The code here supports Terraform 0.12 - 0.12.13; there are warning messages to run this on 0.12.14 and later.
 
    On MacOS, you can acquire it using [homebrew](brew.sh) using this command:
@@ -67,7 +67,7 @@ There are also a couple of steps detailed after that you must run regardless of 
    
 6. Install the AWS CLI using ```https://aws.amazon.com/cli/```
    
-####Automated EC2 Setup
+#### Automated EC2 Setup
 
 1. Create an EC2 instance using the AMI with the AWS CLI installed, usually second on the list.
 
